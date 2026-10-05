@@ -17,6 +17,7 @@ import {
   X,
   Trash2,
   ArrowRight,
+  Check,
 } from 'lucide-react';
 
 interface ReservationsListProps {
@@ -114,6 +115,22 @@ export default function ReservationsList({ filter, refreshKey }: ReservationsLis
 
     if (error) {
       console.error('Error cancelling reservation:', error);
+    } else {
+      await loadReservations();
+      closeDetail();
+    }
+    setCanceling(false);
+  }
+
+  async function approveReservation(id: string) {
+    setCanceling(true);
+    const { error } = await supabase
+      .from('reservations')
+      .update({ status: 'approved' })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error approving reservation:', error);
     } else {
       await loadReservations();
       closeDetail();
@@ -385,8 +402,29 @@ export default function ReservationsList({ filter, refreshKey }: ReservationsLis
                 )}
 
                 {/* Actions */}
-                <div className="flex gap-3 pt-2 border-t border-slate-100">
-                  {(detailReservation.status === 'pending' || detailReservation.status === 'approved') && (
+                <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100">
+                  {/* Coordinator: Approve pending reservation */}
+                  {isCoordinator && detailReservation.status === 'pending' && (
+                    <button
+                      onClick={() => approveReservation(detailReservation.id)}
+                      disabled={canceling}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition-colors disabled:opacity-60"
+                    >
+                      <Check className="w-4 h-4" /> Approve
+                    </button>
+                  )}
+                  {/* Coordinator: Reject pending reservation */}
+                  {isCoordinator && detailReservation.status === 'pending' && (
+                    <button
+                      onClick={() => cancelReservation(detailReservation.id)}
+                      disabled={canceling}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium text-sm transition-colors disabled:opacity-60"
+                    >
+                      <X className="w-4 h-4" /> Reject
+                    </button>
+                  )}
+                  {/* Teacher: Cancel own pending/approved reservation */}
+                  {!isCoordinator && (detailReservation.status === 'pending' || detailReservation.status === 'approved') && (
                     <button
                       onClick={() => cancelReservation(detailReservation.id)}
                       disabled={canceling}
