@@ -8,7 +8,6 @@ import EquipmentCatalog from '@/components/EquipmentCatalog';
 import ReservationsList from '@/components/ReservationsList';
 import CreateReservationModal from '@/components/CreateReservationModal';
 import CheckoutPanel from '@/components/CheckoutPanel';
-import CoordinatorDashboard from '@/components/CoordinatorDashboard';
 import { EquipmentStatusBadge } from '@/components/Badges';
 import {
   Package,
@@ -20,7 +19,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 
-type Tab = 'overview' | 'dashboard' | 'browse' | 'reservations' | 'checkout';
+type Tab = 'overview' | 'browse' | 'reservations' | 'checkout';
 
 export default function App() {
   const { user, profile, loading } = useAuth();
@@ -33,7 +32,7 @@ export default function App() {
     inUse: 0,
     maintenance: 0,
     myReservations: 0,
-    pendingApprovals: 0,
+    activeReservations: 0,
     activeCheckouts: 0,
   });
 
@@ -63,7 +62,7 @@ export default function App() {
       inUse: equipment.filter((e) => e.status === 'in_use').length,
       maintenance: equipment.filter((e) => e.status === 'maintenance').length,
       myReservations: reservations.filter((r) => r.status !== 'cancelled' && r.status !== 'checked_in').length,
-      pendingApprovals: reservations.filter((r) => r.status === 'pending').length,
+      activeReservations: reservations.filter((r) => r.status === 'approved').length,
       activeCheckouts,
     });
   }, [user, profile]);
@@ -89,7 +88,6 @@ export default function App() {
   const tabs = isCoordinator
     ? [
         { id: 'overview', label: 'Overview', icon: <TrendingUp className="w-4 h-4" /> },
-        { id: 'dashboard', label: 'Dashboard', icon: <ClipboardCheck className="w-4 h-4" /> },
         { id: 'browse', label: 'Equipment', icon: <Boxes className="w-4 h-4" /> },
         { id: 'reservations', label: 'All Reservations', icon: <CalendarDays className="w-4 h-4" /> },
         { id: 'checkout', label: 'Check In/Out', icon: <ClipboardCheck className="w-4 h-4" /> },
@@ -111,7 +109,7 @@ export default function App() {
         { label: 'Total Equipment', value: stats.totalEquipment, icon: <Package className="w-5 h-5" />, color: 'bg-blue-500' },
         { label: 'Available Now', value: stats.available, icon: <Boxes className="w-5 h-5" />, color: 'bg-emerald-500' },
         { label: 'In Use', value: stats.inUse, icon: <Package className="w-5 h-5" />, color: 'bg-violet-500' },
-        { label: 'Pending Approvals', value: stats.pendingApprovals, icon: <AlertTriangle className="w-5 h-5" />, color: 'bg-amber-500' },
+        { label: 'Active Reservations', value: stats.activeReservations, icon: <CalendarDays className="w-5 h-5" />, color: 'bg-blue-500' },
         { label: 'Active Checkouts', value: stats.activeCheckouts, icon: <ClipboardCheck className="w-5 h-5" />, color: 'bg-slate-700' },
       ]
     : [
@@ -205,18 +203,16 @@ export default function App() {
                   </div>
                 </button>
                 <button
-                  onClick={() => setActiveTab('dashboard')}
+                  onClick={() => setActiveTab('checkout')}
                   className="group flex items-center gap-4 p-6 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 text-white text-left shadow-lg hover:shadow-xl transition-all"
                 >
                   <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white/15 group-hover:bg-white/25 transition-colors">
                     <ClipboardCheck className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg">Coordinator Dashboard</h3>
+                    <h3 className="font-semibold text-lg">Process Check In/Out</h3>
                     <p className="text-sm text-slate-300">
-                      {stats.pendingApprovals > 0
-                        ? `${stats.pendingApprovals} pending approval${stats.pendingApprovals !== 1 ? 's' : ''} · ${stats.activeCheckouts} active checkout${stats.activeCheckouts !== 1 ? 's' : ''}`
-                        : 'Approve reservations and track check-outs'}
+                      {stats.activeCheckouts} active checkout{stats.activeCheckouts !== 1 ? 's' : ''}
                     </p>
                   </div>
                 </button>
@@ -229,11 +225,7 @@ export default function App() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg text-slate-900">All Reservations</h3>
-                    <p className="text-sm text-slate-500">
-                      {stats.pendingApprovals > 0
-                        ? `${stats.pendingApprovals} pending approval${stats.pendingApprovals !== 1 ? 's' : ''}`
-                        : 'View all teacher bookings'}
-                    </p>
+                    <p className="text-sm text-slate-500">View all teacher bookings</p>
                   </div>
                 </button>
               </>
@@ -247,23 +239,6 @@ export default function App() {
             </h3>
             <EquipmentStatusSummary refreshKey={refreshKey} />
           </div>
-        </div>
-      )}
-
-      {/* Coordinator Dashboard Tab */}
-      {activeTab === 'dashboard' && isCoordinator && (
-        <div>
-          <div className="mb-6">
-            <h2 className="text-xl font-bold text-slate-900">Coordinator Dashboard</h2>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Approve pending reservations and track upcoming check-outs and returns.
-            </p>
-          </div>
-          <CoordinatorDashboard
-            refreshKey={refreshKey}
-            onGoToCheckout={() => setActiveTab('checkout')}
-            onGoToReservations={() => setActiveTab('reservations')}
-          />
         </div>
       )}
 
