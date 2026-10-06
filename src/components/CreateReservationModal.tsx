@@ -96,7 +96,7 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
         purpose: purpose.trim(),
         start_time: start.toISOString(),
         end_time: end.toISOString(),
-        status: 'pending',
+        status: 'approved',
       })
       .select()
       .single();

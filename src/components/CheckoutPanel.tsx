@@ -15,7 +15,6 @@ import {
   ClipboardCheck,
   Inbox,
   Check,
-  X,
 } from 'lucide-react';
 
 interface CheckoutPanelProps {
@@ -86,7 +85,7 @@ export default function CheckoutPanel({ refreshKey }: CheckoutPanelProps) {
            checked_in_by_profile:profiles!checked_in_by ( id, full_name )
          )`
       )
-      .in('status', ['pending', 'approved', 'checked_out'])
+      .in('status', ['approved', 'checked_out'])
       .order('start_time', { ascending: true });
 
     if (error) {
@@ -200,40 +199,6 @@ export default function CheckoutPanel({ refreshKey }: CheckoutPanelProps) {
     }
   }
 
-  async function approveReservation(reservationId: string) {
-    setProcessing(true);
-    const { error } = await supabase
-      .from('reservations')
-      .update({ status: 'approved' })
-      .eq('id', reservationId);
-
-    if (error) {
-      console.error('Approve error:', error);
-    } else {
-      await load();
-      setSuccessMessage('Reservation approved');
-      setTimeout(() => setSuccessMessage(null), 2500);
-    }
-    setProcessing(false);
-  }
-
-  async function rejectReservation(reservationId: string) {
-    setProcessing(true);
-    const { error } = await supabase
-      .from('reservations')
-      .update({ status: 'cancelled' })
-      .eq('id', reservationId);
-
-    if (error) {
-      console.error('Reject error:', error);
-    } else {
-      await load();
-      setSuccessMessage('Reservation rejected');
-      setTimeout(() => setSuccessMessage(null), 2500);
-    }
-    setProcessing(false);
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -259,8 +224,6 @@ export default function CheckoutPanel({ refreshKey }: CheckoutPanelProps) {
   // Filter for the selected mode
   const pendingReservations = reservations.filter((r) => {
     if (actionMode === 'checkout') {
-      // Pending reservations need approval first; approved/checked_out have items to hand out
-      if (r.status === 'pending') return true;
       // Show reservations where there are items not yet checked out
       return r.items.some(
         (item) => !r.checkouts?.some((c) => c.equipment_id === item.equipment_id)
@@ -373,47 +336,41 @@ export default function CheckoutPanel({ refreshKey }: CheckoutPanelProps) {
 
                     {actionMode === 'checkout' ? (
                       <>
-                        {r.status === 'pending' ? (
-                          <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-700">
-                            This reservation is waiting for approval. Approve it to start checking out equipment.
-                          </div>
-                        ) : (
-                          r.items
-                            .filter(
-                              (item) =>
-                                !r.checkouts?.some((c) => c.equipment_id === item.equipment_id)
-                            )
-                            .map((item) => (
-                              <div
-                                key={item.id}
-                                className="flex items-center justify-between p-3 rounded-xl border border-slate-200"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center">
-                                    <Package className="w-4 h-4 text-slate-500" />
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-medium text-slate-900">
-                                      {item.equipment.name}
-                                    </p>
-                                    <p className="text-xs text-slate-400">
-                                      {item.equipment.type}
-                                    </p>
-                                  </div>
+                        {r.items
+                          .filter(
+                            (item) =>
+                              !r.checkouts?.some((c) => c.equipment_id === item.equipment_id)
+                          )
+                          .map((item) => (
+                            <div
+                              key={item.id}
+                              className="flex items-center justify-between p-3 rounded-xl border border-slate-200"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center">
+                                  <Package className="w-4 h-4 text-slate-500" />
                                 </div>
-                                <button
-                                  onClick={() => handleCheckoutItem(item)}
-                                  disabled={processing}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition-colors disabled:opacity-60"
-                                >
-                                  <ArrowUpFromLine className="w-3.5 h-3.5" />
-                                  Hand out
-                                </button>
+                                <div>
+                                  <p className="text-sm font-medium text-slate-900">
+                                    {item.equipment.name}
+                                  </p>
+                                  <p className="text-xs text-slate-400">
+                                    {item.equipment.type}
+                                  </p>
+                                </div>
                               </div>
-                            ))
-                        )}
+                              <button
+                                onClick={() => handleCheckoutItem(item)}
+                                disabled={processing}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition-colors disabled:opacity-60"
+                              >
+                                <ArrowUpFromLine className="w-3.5 h-3.5" />
+                                Hand out
+                              </button>
+                            </div>
+                          ))}
                         {/* Already checked out items */}
-                        {r.status !== 'pending' && r.checkouts?.filter((c) => !c.checked_in_at).map((c) => (
+                        {r.checkouts?.filter((c) => !c.checked_in_at).map((c) => (
                           <div
                             key={c.id}
                             className="flex items-center justify-between p-3 rounded-xl bg-violet-50 border border-violet-100"
@@ -490,25 +447,6 @@ export default function CheckoutPanel({ refreshKey }: CheckoutPanelProps) {
                       </>
                     )}
 
-                    {/* Approve / Reject buttons if pending */}
-                    {r.status === 'pending' && actionMode === 'checkout' && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => approveReservation(r.id)}
-                          disabled={processing}
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors disabled:opacity-60"
-                        >
-                          <Check className="w-4 h-4" /> Approve
-                        </button>
-                        <button
-                          onClick={() => rejectReservation(r.id)}
-                          disabled={processing}
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition-colors disabled:opacity-60"
-                        >
-                          <X className="w-4 h-4" /> Reject
-                        </button>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
