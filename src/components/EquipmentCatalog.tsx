@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import type { Equipment, EquipmentStatus, ReservationStatus } from '@/types/database';
-import { EquipmentStatusBadge } from '@/components/Badges';
+import { EquipmentStatusBadge, ReservationStatusBadge, formatTime } from '@/components/Badges';
 import {
   Search,
   Package,
@@ -21,6 +21,9 @@ import {
   Trash2,
   MapPin,
   X,
+  CalendarSearch,
+  User,
+  Clock,
 } from 'lucide-react';
 
 interface EquipmentCatalogProps {
@@ -51,6 +54,16 @@ function getIcon(category: string, type: string): React.ReactNode {
   return categoryIcons[category] || <Package className="w-5 h-5" />;
 }
 
+interface DayReservation {
+  id: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+  status: ReservationStatus;
+  profile: { full_name: string } | null;
+  items: { equipment_id: string }[];
+}
+
 export default function EquipmentCatalog({
   selectedIds,
   onToggleSelect,
@@ -66,6 +79,24 @@ export default function EquipmentCatalog({
   const [editingItem, setEditingItem] = useState<Equipment | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editMode, setEditMode] = useState(false);
+
+  const isCoordinator = profile?.role === 'coordinator';
+
+  const [daySearchDate, setDaySearchDate] = useState<string>('');
+  const [dayReservations, setDayReservations] = useState<DayReservation[]>([]);
+  const [daySearchLoading, setDaySearchLoading] = useState(false);
+
+  const daySearchResults = useMemo(() => {
+    if (!daySearchDate) return null;
+    const result: Record<string, DayReservation[]> = {};
+    for (const r of dayReservations) {
+      for (const item of r.items) {
+        if (!result[item.equipment_id]) result[item.equipment_id] = [];
+        result[item.equipment_id].push(r);
+      }
+    }
+    return result;
+  }, [dayReservations, daySearchDate]);
 
   const loadEquipment = useCallback(async () => {
     const { data, error } = await supabase
@@ -122,7 +153,35 @@ export default function EquipmentCatalog({
     checkConflicts();
   }, [reservationDate?.start, reservationDate?.end]);
 
-  const isCoordinator = profile?.role === 'coordinator';
+  useEffect(() => {
+    async function searchDay() {
+      if (!daySearchDate) {
+        setDayReservations([]);
+        return;
+      }
+      setDaySearchLoading(true);
+      const dayStart = new Date(daySearchDate + 'T00:00:00');
+      const dayEnd = new Date(daySearchDate + 'T23:59:59');
+      const { data, error } = await supabase
+        .from('reservations')
+        .select(
+          `id, title, start_time, end_time, status,
+           profile:profiles!user_id ( full_name ),
+           items:reservation_items ( equipment_id )`
+        )
+        .in('status', ['approved', 'checked_out'] as ReservationStatus[])
+        .lte('start_time', dayEnd.toISOString())
+        .gte('end_time', dayStart.toISOString())
+        .order('start_time', { ascending: true });
+      if (error) {
+        console.error('Error searching day:', error);
+      } else if (data) {
+        setDayReservations(data as unknown as DayReservation[]);
+      }
+      setDaySearchLoading(false);
+    }
+    searchDay();
+  }, [daySearchDate]);
 
   const categories = useMemo(() => {
     const set = new Set(equipment.map((e) => e.category));
@@ -221,6 +280,81 @@ export default function EquipmentCatalog({
           >
             <Pencil className="w-4 h-4" /> {editMode ? 'Done Editing' : 'Edit Mode'}
           </button>
+        </div>
+      )}
+
+      {/* Coordinator: Day search */}
+      {isCoordinator && (
+        <div className="mb-4 bg-white rounded-2xl border border-slate-200 p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <CalendarSearch className="w-5 h-5 text-slate-500" />
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900">Search by Day</h3>
+              <p className="text-xs text-slate-400">See who reserved what equipment on a specific date</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="date"
+              value={daySearchDate}
+              onChange={(e) => setDaySearchDate(e.target.value)}
+              className="px-4 py-2 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-slate-900 text-sm"
+            />
+            {daySearchDate && (
+              <button
+                type="button"
+                onClick={() => setDaySearchDate('')}
+                className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-50 transition-colors"
+              >
+                <X className="w-4 h-4" /> Clear
+              </button>
+            )}
+          </div>
+
+          {daySearchLoading && (
+            <div className="flex items-center gap-2 mt-3 text-sm text-slate-400">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading reservations...
+            </div>
+          )}
+
+          {daySearchResults && !daySearchLoading && (
+            <div className="mt-3 space-y-2">
+              {dayReservations.length === 0 ? (
+                <p className="text-sm text-slate-400 py-2">No reservations on this day.</p>
+              ) : (
+                dayReservations.map((r) => (
+                  <div key={r.id} className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-900 truncate">{r.title}</p>
+                        <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500">
+                          {r.profile && (
+                            <span className="flex items-center gap-1">
+                              <User className="w-3 h-3" /> {r.profile.full_name}
+                            </span>
+                          )}
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> {formatTime(r.start_time)}–{formatTime(r.end_time)}
+                          </span>
+                        </div>
+                      </div>
+                      <ReservationStatusBadge status={r.status} />
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {r.items.map((item, idx) => {
+                        const eq = equipment.find((e) => e.id === item.equipment_id);
+                        return (
+                          <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-slate-200 text-xs text-slate-600">
+                            <Package className="w-3 h-3" /> {eq?.name || 'Unknown'}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
       )}
 

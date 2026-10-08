@@ -62,6 +62,7 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
   const [title, setTitle] = useState('');
   const [purpose, setPurpose] = useState('');
   const [dateStr, setDateStr] = useState(defaultDate());
+  const [endDateStr, setEndDateStr] = useState(defaultDate());
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:00');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -86,8 +87,8 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
 
   const reservationDate = useMemo(() => ({
     start: buildISOString(dateStr, startTime),
-    end: buildISOString(dateStr, endTime),
-  }), [dateStr, startTime, endTime]);
+    end: buildISOString(endDateStr, endTime),
+  }), [dateStr, endDateStr, startTime, endTime]);
 
   function handleDateChange(value: string) {
     const date = new Date(value + 'T00:00:00');
@@ -98,6 +99,20 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
     }
     setError(null);
     setDateStr(value);
+    if (new Date(value) > new Date(endDateStr)) {
+      setEndDateStr(value);
+    }
+  }
+
+  function handleEndDateChange(value: string) {
+    const date = new Date(value + 'T00:00:00');
+    const day = date.getDay();
+    if (day === 6 || day === 0) {
+      setError('Reservations cannot be made on weekends. Please select a weekday (Monday–Friday).');
+      return;
+    }
+    setError(null);
+    setEndDateStr(value);
   }
 
   function handleStartTimeChange(value: string) {
@@ -134,13 +149,17 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
       setError('Please select at least one piece of equipment.');
       return;
     }
-    if (isWeekend(dateStr)) {
+    if (isWeekend(dateStr) || isWeekend(endDateStr)) {
       setError('Reservations cannot be made on weekends.');
+      return;
+    }
+    if (new Date(endDateStr) < new Date(dateStr)) {
+      setError('Return date must be on or after the pickup date.');
       return;
     }
 
     const startIso = buildISOString(dateStr, startTime);
-    const endIso = buildISOString(dateStr, endTime);
+    const endIso = buildISOString(endDateStr, endTime);
     const start = new Date(startIso);
     const end = new Date(endIso);
 
@@ -263,7 +282,7 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
                   <span className="flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4" /> Date
+                    <Calendar className="w-4 h-4" /> Pickup Date
                   </span>
                 </label>
                 <input
@@ -278,11 +297,30 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
                 </p>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4" /> Return Date
+                  </span>
+                </label>
+                <input
+                  type="date"
+                  value={endDateStr}
+                  min={dateStr}
+                  onChange={(e) => handleEndDateChange(e.target.value)}
+                  required
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-slate-900"
+                />
+                <p className="text-xs text-slate-400 mt-1">
+                  Must be on or after pickup date
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">
                     <span className="flex items-center gap-1.5">
-                      <Clock className="w-4 h-4" /> Start
+                      <Clock className="w-4 h-4" /> Pickup Time
                     </span>
                   </label>
                   <select
@@ -298,7 +336,7 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">
                     <span className="flex items-center gap-1.5">
-                      <Clock className="w-4 h-4" /> End
+                      <Clock className="w-4 h-4" /> Return Time
                     </span>
                   </label>
                   <select
