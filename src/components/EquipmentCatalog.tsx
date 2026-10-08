@@ -17,9 +17,9 @@ import {
   Sliders,
   Headphones,
   Plus,
-  Minus,
   Pencil,
   Trash2,
+  MapPin,
   X,
 } from 'lucide-react';
 
@@ -262,6 +262,11 @@ export default function EquipmentCatalog({
                     <h3 className="font-semibold text-slate-900">{group.type}</h3>
                     <p className="text-xs text-slate-400 capitalize">{group.category}</p>
                   </div>
+                  {isCoordinator && group.items.some((i) => i.location) && (
+                    <div className="flex items-center gap-1 text-xs text-slate-400">
+                      <MapPin className="w-3.5 h-3.5" />
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 text-sm text-slate-500">
                     <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-xs font-medium">
                       {availableForSelection} available
@@ -304,6 +309,11 @@ export default function EquipmentCatalog({
                             </span>
                           )}
                           <span>{item.name}</span>
+                          {isCoordinator && item.location && (
+                            <span className="flex items-center gap-0.5 text-xs text-slate-400 ml-1">
+                              <MapPin className="w-3 h-3" /> {item.location}
+                            </span>
+                          )}
                           {isMaintenance && (
                             <span className="text-xs text-red-500">maintenance</span>
                           )}
@@ -365,6 +375,7 @@ function EquipmentForm({
   const [type, setType] = useState(equipment?.type || '');
   const [status, setStatus] = useState<EquipmentStatus>(equipment?.status || 'available');
   const [notes, setNotes] = useState(equipment?.notes || '');
+  const [location, setLocation] = useState(equipment?.location || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -382,6 +393,7 @@ function EquipmentForm({
       type: type.trim(),
       status,
       notes: notes.trim(),
+      location: location.trim(),
     };
 
     let result;
@@ -473,6 +485,17 @@ function EquipmentForm({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Optional notes"
+            className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-sm text-slate-900"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Location</label>
+          <input
+            type="text"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="e.g. Cabinet A, Storage Room 2"
             className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-sm text-slate-900"
           />
         </div>

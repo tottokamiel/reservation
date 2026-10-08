@@ -10,10 +10,49 @@ interface CreateReservationModalProps {
   onCreated: () => void;
 }
 
-function toLocalDateTimeInput(date: Date): string {
-  const off = date.getTimezoneOffset();
-  const local = new Date(date.getTime() - off * 60_000);
-  return local.toISOString().slice(0, 16);
+function pad(n: number): string {
+  return n.toString().padStart(2, '0');
+}
+
+function toDateInput(date: Date): string {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function getNextAllowedDate(date: Date): Date {
+  const day = date.getDay();
+  if (day === 6) return new Date(date.getTime() + 2 * 24 * 60 * 60 * 1000);
+  if (day === 0) return new Date(date.getTime() + 1 * 24 * 60 * 60 * 1000);
+  return date;
+}
+
+const TIME_SLOTS: string[] = (() => {
+  const slots: string[] = [];
+  for (let h = 8; h <= 16; h++) {
+    const maxMin = h === 16 ? 30 : 45;
+    for (let m = 0; m <= maxMin; m += 15) {
+      slots.push(`${pad(h)}:${pad(m)}`);
+    }
+  }
+  return slots;
+})();
+
+function defaultDate(): string {
+  const now = new Date();
+  return toDateInput(getNextAllowedDate(now));
+}
+
+function defaultTimeSlot(after?: string): string {
+  if (!after) return '09:00';
+  const idx = TIME_SLOTS.indexOf(after);
+  if (idx >= 0 && idx < TIME_SLOTS.length - 1) return TIME_SLOTS[idx + 1];
+  return after;
+}
+
+function buildISOString(dateStr: string, timeStr: string): string {
+  const [h, m] = timeStr.split(':').map(Number);
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, mo - 1, d, h, m);
+  return dt.toISOString();
 }
 
 export default function CreateReservationModal({ onClose, onCreated }: CreateReservationModalProps) {
@@ -22,16 +61,13 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
 
   const [title, setTitle] = useState('');
   const [purpose, setPurpose] = useState('');
-  const now = new Date();
-  const defaultStart = new Date(now.getTime() + 60 * 60 * 1000);
-  const defaultEnd = new Date(defaultStart.getTime() + 60 * 60 * 1000);
-  const [startTime, setStartTime] = useState(toLocalDateTimeInput(defaultStart));
-  const [endTime, setEndTime] = useState(toLocalDateTimeInput(defaultEnd));
+  const [dateStr, setDateStr] = useState(defaultDate());
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('10:00');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Coordinator: select teacher to reserve for
   const [teachers, setTeachers] = useState<Profile[]>([]);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
 
@@ -49,9 +85,33 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
   }, [isCoordinator]);
 
   const reservationDate = useMemo(() => ({
-    start: new Date(startTime).toISOString(),
-    end: new Date(endTime).toISOString(),
-  }), [startTime, endTime]);
+    start: buildISOString(dateStr, startTime),
+    end: buildISOString(dateStr, endTime),
+  }), [dateStr, startTime, endTime]);
+
+  function handleDateChange(value: string) {
+    const date = new Date(value + 'T00:00:00');
+    const day = date.getDay();
+    if (day === 6 || day === 0) {
+      setError('Reservations cannot be made on weekends. Please select a weekday (Monday–Friday).');
+      return;
+    }
+    setError(null);
+    setDateStr(value);
+  }
+
+  function handleStartTimeChange(value: string) {
+    setStartTime(value);
+    if (TIME_SLOTS.indexOf(value) >= TIME_SLOTS.indexOf(endTime)) {
+      setEndTime(defaultTimeSlot(value));
+    }
+  }
+
+  function isWeekend(dateStr: string): boolean {
+    const date = new Date(dateStr + 'T00:00:00');
+    const day = date.getDay();
+    return day === 6 || day === 0;
+  }
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
@@ -74,9 +134,16 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
       setError('Please select at least one piece of equipment.');
       return;
     }
+    if (isWeekend(dateStr)) {
+      setError('Reservations cannot be made on weekends.');
+      return;
+    }
 
-    const start = new Date(startTime);
-    const end = new Date(endTime);
+    const startIso = buildISOString(dateStr, startTime);
+    const endIso = buildISOString(dateStr, endTime);
+    const start = new Date(startIso);
+    const end = new Date(endIso);
+
     if (end <= start) {
       setError('End time must be after start time.');
       return;
@@ -196,31 +263,54 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
                   <span className="flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4" /> Start
+                    <Calendar className="w-4 h-4" /> Date
                   </span>
                 </label>
                 <input
-                  type="datetime-local"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
+                  type="date"
+                  value={dateStr}
+                  onChange={(e) => handleDateChange(e.target.value)}
                   required
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-slate-900"
                 />
+                <p className="text-xs text-slate-400 mt-1">
+                  Weekdays only (Monday–Friday)
+                </p>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  <span className="flex items-center gap-1.5">
-                    <Clock className="w-4 h-4" /> End
-                  </span>
-                </label>
-                <input
-                  type="datetime-local"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  required
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-slate-900"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="w-4 h-4" /> Start
+                    </span>
+                  </label>
+                  <select
+                    value={startTime}
+                    onChange={(e) => handleStartTimeChange(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-slate-900 bg-white"
+                  >
+                    {TIME_SLOTS.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="w-4 h-4" /> End
+                    </span>
+                  </label>
+                  <select
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-slate-900 bg-white"
+                  >
+                    {TIME_SLOTS.filter((t) => TIME_SLOTS.indexOf(t) > TIME_SLOTS.indexOf(startTime)).map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="sm:col-span-2">

@@ -23,6 +23,7 @@ export interface Equipment {
   type: string;
   status: EquipmentStatus;
   notes: string;
+  location: string;
   created_at: string;
 }
 

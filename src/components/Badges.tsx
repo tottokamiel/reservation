@@ -44,9 +44,10 @@ export function formatDate(dateStr: string): string {
 
 export function formatTime(dateStr: string): string {
   const d = new Date(dateStr);
-  return d.toLocaleTimeString('en-US', {
-    hour: 'numeric',
+  return d.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
   });
 }
 
