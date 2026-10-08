@@ -298,9 +298,9 @@ export default function App() {
       {activeTab === 'checkout' && isCoordinator && (
         <div>
           <div className="mb-6">
-            <h2 className="text-xl font-bold text-slate-900">Check In / Check Out</h2>
+            <h2 className="text-xl font-bold text-slate-900">Check In / Check Out Calendar</h2>
             <p className="text-sm text-slate-500 mt-0.5">
-              Hand equipment to teachers and process returns. Record the condition of each item.
+              Weekly view of equipment handoffs. Click a reservation to check items in or out.
             </p>
           </div>
           <CheckoutPanel refreshKey={refreshKey} />

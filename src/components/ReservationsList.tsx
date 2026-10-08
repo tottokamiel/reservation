@@ -257,7 +257,7 @@ export default function ReservationsList({ filter, refreshKey }: ReservationsLis
                 </div>
 
                 {/* Reserved by */}
-                {filter === 'all' && detailReservation.profile && (
+                {detailReservation.profile && (
                   <div className="flex items-center gap-3 mb-5 p-3 rounded-xl bg-slate-50">
                     <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center">
                       <User className="w-4 h-4 text-slate-600" />
@@ -386,12 +386,22 @@ export default function ReservationsList({ filter, refreshKey }: ReservationsLis
 
                 {/* Actions */}
                 <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100">
-                  {/* Teacher: Cancel own approved reservation */}
-                  {!isCoordinator && (detailReservation.status === 'approved') && (
+                  {/* Teacher: Cancel own active reservation */}
+                  {!isCoordinator && (detailReservation.status === 'approved' || detailReservation.status === 'checked_out') && (
                     <button
                       onClick={() => cancelReservation(detailReservation.id)}
                       disabled={canceling}
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium text-sm transition-colors disabled:opacity-60"
+                    >
+                      <X className="w-4 h-4" /> Cancel Reservation
+                    </button>
+                  )}
+                  {/* Coordinator: Cancel any active reservation */}
+                  {isCoordinator && (detailReservation.status === 'approved' || detailReservation.status === 'checked_out') && (
+                    <button
+                      onClick={() => cancelReservation(detailReservation.id)}
+                      disabled={canceling}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium text-sm transition-colors disabled:opacity-60"
                     >
                       <X className="w-4 h-4" /> Cancel Reservation
                     </button>
