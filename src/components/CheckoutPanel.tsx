@@ -136,8 +136,8 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
          )`
       )
       .in('status', ['approved', 'checked_out'])
-      .gte('start_time', weekStartIso)
       .lt('start_time', weekEndIso)
+      .gt('end_time', weekStartIso)
       .order('start_time', { ascending: true });
 
     if (error) {

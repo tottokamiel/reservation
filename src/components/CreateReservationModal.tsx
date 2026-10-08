@@ -293,8 +293,25 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-slate-900"
                 />
                 <p className="text-xs text-slate-400 mt-1">
-                  Weekdays only (Monday–Friday)
+                  Weekdays only (Mon–Fri)
                 </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="w-4 h-4" /> Pickup Time
+                  </span>
+                </label>
+                <select
+                  value={startTime}
+                  onChange={(e) => handleStartTimeChange(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-slate-900 bg-white"
+                >
+                  {TIME_SLOTS.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -312,43 +329,25 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-slate-900"
                 />
                 <p className="text-xs text-slate-400 mt-1">
-                  Must be on or after pickup date
+                  On or after pickup date
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    <span className="flex items-center gap-1.5">
-                      <Clock className="w-4 h-4" /> Pickup Time
-                    </span>
-                  </label>
-                  <select
-                    value={startTime}
-                    onChange={(e) => handleStartTimeChange(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-slate-900 bg-white"
-                  >
-                    {TIME_SLOTS.map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    <span className="flex items-center gap-1.5">
-                      <Clock className="w-4 h-4" /> Return Time
-                    </span>
-                  </label>
-                  <select
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-slate-900 bg-white"
-                  >
-                    {TIME_SLOTS.filter((t) => TIME_SLOTS.indexOf(t) > TIME_SLOTS.indexOf(startTime)).map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="w-4 h-4" /> Return Time
+                  </span>
+                </label>
+                <select
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-slate-900 bg-white"
+                >
+                  {TIME_SLOTS.filter((t) => TIME_SLOTS.indexOf(t) > TIME_SLOTS.indexOf(startTime)).map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="sm:col-span-2">
