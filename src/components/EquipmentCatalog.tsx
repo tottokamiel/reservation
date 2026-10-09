@@ -358,11 +358,11 @@ export default function EquipmentCatalog({
         </div>
       )}
 
-      {/* Add/Edit form */}
-      {(showAddForm || editingItem) && isCoordinator && (
+      {/* Add form (not editing existing item) */}
+      {showAddForm && !editingItem && isCoordinator && (
         <EquipmentForm
-          key={editingItem?.id || 'new'}
-          equipment={editingItem}
+          key="new"
+          equipment={null}
           onClose={() => { setShowAddForm(false); setEditingItem(null); }}
           onSaved={() => { setShowAddForm(false); setEditingItem(null); loadEquipment(); }}
         />
@@ -422,57 +422,71 @@ export default function EquipmentCatalog({
                     const isUnavailable = hasConflict || isMaintenance;
 
                     return (
-                      <div key={item.id} className="relative">
-                        <button
-                          type="button"
-                          onClick={() => !isUnavailable && onToggleSelect(item.id)}
-                          disabled={isUnavailable && !isCoordinator}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-sm transition-all ${
-                            isSelected
-                              ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
-                              : isUnavailable && !isCoordinator
-                              ? 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed'
-                              : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 cursor-pointer'
-                          }`}
-                        >
-                          {isSelected && (
-                            <span className="w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
-                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
-                            </span>
-                          )}
-                          <span>{item.name}</span>
-                          {isCoordinator && item.location && (
-                            <span className="flex items-center gap-0.5 text-xs text-slate-400 ml-1">
-                              <MapPin className="w-3 h-3" /> {item.location}
-                            </span>
-                          )}
-                          {isMaintenance && (
-                            <span className="text-xs text-red-500">maintenance</span>
-                          )}
-                          {hasConflict && !isMaintenance && (
-                            <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                          )}
-                        </button>
+                      <div key={item.id} className="relative w-full">
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => !isUnavailable && onToggleSelect(item.id)}
+                            disabled={isUnavailable && !isCoordinator}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-sm transition-all ${
+                              isSelected
+                                ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
+                                : isUnavailable && !isCoordinator
+                                ? 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed'
+                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 cursor-pointer'
+                            }`}
+                          >
+                            {isSelected && (
+                              <span className="w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
+                                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              </span>
+                            )}
+                            <span>{item.name}</span>
+                            {isCoordinator && item.location && (
+                              <span className="flex items-center gap-0.5 text-xs text-slate-400 ml-1">
+                                <MapPin className="w-3 h-3" /> {item.location}
+                              </span>
+                            )}
+                            {isMaintenance && (
+                              <span className="text-xs text-red-500">maintenance</span>
+                            )}
+                            {hasConflict && !isMaintenance && (
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                            )}
+                          </button>
 
-                        {/* Coordinator edit controls */}
-                        {isCoordinator && editMode && (
-                          <div className="absolute -top-2 -right-2 flex gap-1 z-10">
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); setEditingItem(item); }}
-                              className="w-6 h-6 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center hover:bg-slate-50"
-                            >
-                              <Pencil className="w-3 h-3 text-slate-600" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id, item.name); }}
-                              className="w-6 h-6 rounded-full bg-white border border-red-200 shadow-sm flex items-center justify-center hover:bg-red-50"
-                            >
-                              <Trash2 className="w-3 h-3 text-red-500" />
-                            </button>
+                          {/* Coordinator edit controls */}
+                          {isCoordinator && editMode && (
+                            <div className="flex gap-1">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setEditingItem(item); }}
+                                className="w-6 h-6 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center hover:bg-slate-50"
+                              >
+                                <Pencil className="w-3 h-3 text-slate-600" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id, item.name); }}
+                                className="w-6 h-6 rounded-full bg-white border border-red-200 shadow-sm flex items-center justify-center hover:bg-red-50"
+                              >
+                                <Trash2 className="w-3 h-3 text-red-500" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Inline edit form under the item */}
+                        {isCoordinator && editingItem?.id === item.id && (
+                          <div className="w-full mt-2 mb-2">
+                            <EquipmentForm
+                              key={item.id}
+                              equipment={editingItem}
+                              onClose={() => setEditingItem(null)}
+                              onSaved={() => { setEditingItem(null); loadEquipment(); }}
+                            />
                           </div>
                         )}
                       </div>

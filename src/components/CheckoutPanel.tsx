@@ -91,9 +91,14 @@ function getEventAction(r: CalendarReservation, dayDate: Date): ActionType {
   );
   const hasItemsToCheckin = r.checkouts?.some((c) => !c.checked_in_at) ?? false;
 
-  if (startsToday && hasItemsToCheckout && endsToday && hasItemsToCheckin) return 'both';
+  const dayIsFriday = dayDate.getDay() === 5;
+  const endOnWeekend = end.getDay() === 6 || end.getDay() === 0;
+  const endBeforeOrOnDay = end <= new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), 23, 59, 59);
+  const endsTodayOrWeekendRollback = endsToday || (dayIsFriday && endOnWeekend && endBeforeOrOnDay);
+
+  if (startsToday && hasItemsToCheckout && endsTodayOrWeekendRollback && hasItemsToCheckin) return 'both';
   if (startsToday && hasItemsToCheckout) return 'checkout';
-  if (endsToday && hasItemsToCheckin) return 'checkin';
+  if (endsTodayOrWeekendRollback && hasItemsToCheckin) return 'checkin';
   return 'none';
 }
 
@@ -316,6 +321,12 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
       return `from ${formatTime(r.start_time)}`;
     } else if (endsToday) {
       return `until ${formatTime(r.end_time)}`;
+    } else {
+      const dayIsFriday = dayDate.getDay() === 5;
+      const endOnWeekend = end.getDay() === 6 || end.getDay() === 0;
+      if (dayIsFriday && endOnWeekend) {
+        return `return by ${formatTime(r.end_time)}`;
+      }
     }
     return 'all day';
   }
