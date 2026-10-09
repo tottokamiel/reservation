@@ -86,19 +86,26 @@ function getEventAction(r: CalendarReservation, dayDate: Date): ActionType {
   const end = new Date(r.end_time);
   const startsToday = sameDay(start, dayDate);
   const endsToday = sameDay(end, dayDate);
+
   const hasItemsToCheckout = r.items.some(
     (item) => !r.checkouts?.some((c) => c.equipment_id === item.equipment_id)
   );
-  const hasItemsToCheckin = r.checkouts?.some((c) => !c.checked_in_at) ?? false;
+
+  const hasItemsNotReturned = r.items.some((item) => {
+    const checkout = r.checkouts?.find((c) => c.equipment_id === item.equipment_id);
+    return !checkout?.checked_in_at;
+  });
 
   const dayIsFriday = dayDate.getDay() === 5;
   const endOnWeekend = end.getDay() === 6 || end.getDay() === 0;
   const endBeforeOrOnDay = end <= new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), 23, 59, 59);
   const endsTodayOrWeekendRollback = endsToday || (dayIsFriday && endOnWeekend && endBeforeOrOnDay);
 
-  if (startsToday && hasItemsToCheckout && endsTodayOrWeekendRollback && hasItemsToCheckin) return 'both';
+  if (startsToday && hasItemsToCheckout && endsTodayOrWeekendRollback && hasItemsNotReturned) return 'both';
   if (startsToday && hasItemsToCheckout) return 'checkout';
-  if (endsTodayOrWeekendRollback && hasItemsToCheckin) return 'checkin';
+  if (endsTodayOrWeekendRollback && hasItemsNotReturned) {
+    return hasItemsToCheckout ? 'both' : 'checkin';
+  }
   return 'none';
 }
 
@@ -415,7 +422,10 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
                     const itemsToCheckout = r.items.filter(
                       (item) => !r.checkouts?.some((c) => c.equipment_id === item.equipment_id)
                     ).length;
-                    const itemsToCheckin = r.checkouts?.filter((c) => !c.checked_in_at).length || 0;
+                    const itemsToCheckin = r.items.filter((item) => {
+                      const checkout = r.checkouts?.find((c) => c.equipment_id === item.equipment_id);
+                      return !checkout?.checked_in_at;
+                    }).length;
 
                     return (
                       <button
