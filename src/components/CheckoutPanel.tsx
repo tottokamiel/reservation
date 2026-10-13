@@ -80,7 +80,7 @@ function sameDay(a: Date, b: Date): boolean {
     a.getDate() === b.getDate();
 }
 
-type ActionType = 'checkout' | 'checkin' | 'both' | 'none';
+type ActionType = 'checkout' | 'checkin' | 'both' | 'completed' | 'none';
 
 function getEventAction(r: CalendarReservation, dayDate: Date): ActionType {
   const start = new Date(r.start_time);
@@ -102,6 +102,7 @@ function getEventAction(r: CalendarReservation, dayDate: Date): ActionType {
   const endBeforeOrOnDay = end <= new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), 23, 59, 59);
   const endsTodayOrWeekendRollback = endsToday || (dayIsFriday && endOnWeekend && endBeforeOrOnDay);
 
+  if (r.status === 'checked_in' && endsTodayOrWeekendRollback) return 'completed';
   if (startsToday && hasItemsToCheckout && endsTodayOrWeekendRollback && hasItemsNotReturned) return 'both';
   if (startsToday && hasItemsToCheckout) return 'checkout';
   if (endsTodayOrWeekendRollback && hasItemsNotReturned) {
@@ -148,7 +149,7 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
            equipment:equipment ( id, name, category, type )
          )`
       )
-      .in('status', ['approved', 'checked_out'])
+      .in('status', ['approved', 'checked_out', 'checked_in'])
       .lt('start_time', weekEndIso)
       .gt('end_time', weekStartIso)
       .order('start_time', { ascending: true });
@@ -439,6 +440,8 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
                             ? 'border-orange-300 bg-orange-50 hover:bg-orange-100'
                             : action === 'both'
                             ? 'border-teal-300 bg-teal-50 hover:bg-teal-100'
+                            : action === 'completed'
+                            ? 'border-slate-200 bg-slate-100 hover:bg-slate-200 opacity-70'
                             : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
                         }`}
                       >
@@ -451,16 +454,17 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
                               <ArrowDownToLine className="w-3 h-3 text-orange-600" />
                             </>
                           )}
+                          {action === 'completed' && <Check className="w-3.5 h-3.5 text-slate-500 shrink-0" />}
                           {action === 'none' && <Package className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
-                          <p className="text-xs font-semibold text-slate-700 truncate">
+                          <p className={`text-xs font-semibold truncate ${action === 'completed' ? 'text-slate-500' : 'text-slate-700'}`}>
                             {timing}
                           </p>
                         </div>
-                        <p className="text-sm font-medium text-slate-900 truncate mb-0.5">
+                        <p className={`text-sm font-medium truncate mb-0.5 ${action === 'completed' ? 'text-slate-500' : 'text-slate-900'}`}>
                           {r.title}
                         </p>
                         {(r.reserved_for_name || r.profile) && (
-                          <p className="text-xs text-slate-500 truncate flex items-center gap-1">
+                          <p className={`text-xs truncate flex items-center gap-1 ${action === 'completed' ? 'text-slate-400' : 'text-slate-500'}`}>
                             <User className="w-3 h-3" /> {r.reserved_for_name || r.profile?.full_name}
                           </p>
                         )}
@@ -480,6 +484,9 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
                             <span className="text-xs font-medium text-teal-600">
                               {itemsToCheckout + itemsToCheckin} actions
                             </span>
+                          )}
+                          {action === 'completed' && (
+                            <span className="text-xs font-medium text-slate-500">Completed</span>
                           )}
                         </div>
                       </button>
@@ -502,6 +509,9 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded bg-teal-100 border border-teal-300" /> Both
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded bg-slate-100 border border-slate-300" /> Completed
         </span>
       </div>
 

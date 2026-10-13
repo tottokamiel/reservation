@@ -22,6 +22,7 @@ import {
   MapPin,
   X,
   CalendarSearch,
+  History,
   User,
   Clock,
 } from 'lucide-react';
@@ -86,6 +87,9 @@ export default function EquipmentCatalog({
   const [daySearchDate, setDaySearchDate] = useState<string>('');
   const [dayReservations, setDayReservations] = useState<DayReservation[]>([]);
   const [daySearchLoading, setDaySearchLoading] = useState(false);
+  const [historyEquipment, setHistoryEquipment] = useState<Equipment | null>(null);
+  const [historyReservations, setHistoryReservations] = useState<DayReservation[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const daySearchResults = useMemo(() => {
     if (!daySearchDate) return null;
@@ -183,6 +187,29 @@ export default function EquipmentCatalog({
     }
     searchDay();
   }, [daySearchDate]);
+
+  async function openEquipmentHistory(item: Equipment) {
+    setHistoryEquipment(item);
+    setHistoryReservations([]);
+    setHistoryLoading(true);
+
+    const { data, error } = await supabase
+      .from('reservations')
+      .select(
+        `id, reserved_for_name, title, start_time, end_time, status,
+         profile:profiles!user_id ( full_name ),
+         items:reservation_items!inner ( equipment_id )`
+      )
+      .eq('reservation_items.equipment_id', item.id)
+      .order('start_time', { ascending: false });
+
+    if (error) {
+      console.error('Error loading equipment history:', error);
+    } else if (data) {
+      setHistoryReservations(data as unknown as DayReservation[]);
+    }
+    setHistoryLoading(false);
+  }
 
   const categories = useMemo(() => {
     const set = new Set(equipment.map((e) => e.category));
@@ -458,6 +485,17 @@ export default function EquipmentCatalog({
                             )}
                           </button>
 
+                          {isCoordinator && (
+                            <button
+                              type="button"
+                              onClick={() => openEquipmentHistory(item)}
+                              className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-500 hover:border-blue-300 hover:text-blue-600 transition-colors text-xs"
+                              title={`View reservation history for ${item.name}`}
+                            >
+                              <History className="w-3.5 h-3.5" /> History
+                            </button>
+                          )}
+
                           {/* Coordinator edit controls */}
                           {isCoordinator && editMode && (
                             <div className="flex gap-1">
@@ -502,6 +540,70 @@ export default function EquipmentCatalog({
 
       {conflictLoading && (
         <p className="text-xs text-slate-400 mt-4 text-center">Checking availability for selected dates...</p>
+      )}
+
+      {historyEquipment && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={() => setHistoryEquipment(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[85vh] overflow-hidden"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-slate-200">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 mb-1">Reservation History</p>
+                <h2 className="text-xl font-bold text-slate-900">{historyEquipment.name}</h2>
+                <p className="text-sm text-slate-500 mt-1">Every reservation recorded for this equipment item</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHistoryEquipment(null)}
+                className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[calc(85vh-132px)]">
+              {historyLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+                </div>
+              ) : historyReservations.length === 0 ? (
+                <div className="text-center py-12">
+                  <History className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                  <p className="text-sm font-medium text-slate-600">No reservations yet</p>
+                  <p className="text-xs text-slate-400 mt-1">This item has not been reserved before.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {historyReservations.map((reservation) => (
+                    <div key={reservation.id} className="rounded-xl border border-slate-200 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-semibold text-slate-900 truncate">{reservation.title}</h3>
+                          <p className="text-sm text-slate-600 mt-1 flex items-center gap-1.5">
+                            <User className="w-3.5 h-3.5 text-slate-400" />
+                            {reservation.reserved_for_name || reservation.profile?.full_name || 'Unknown teacher'}
+                          </p>
+                        </div>
+                        <ReservationStatusBadge status={reservation.status} />
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-3">
+                        <Clock className="w-3.5 h-3.5" />
+                        {new Date(reservation.start_time).toLocaleDateString()} · {formatTime(reservation.start_time)}
+                        <span className="text-slate-300">to</span>
+                        {new Date(reservation.end_time).toLocaleDateString()} · {formatTime(reservation.end_time)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
