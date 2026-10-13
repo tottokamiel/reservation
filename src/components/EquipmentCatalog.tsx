@@ -56,6 +56,7 @@ function getIcon(category: string, type: string): React.ReactNode {
 
 interface DayReservation {
   id: string;
+  reserved_for_name: string | null;
   title: string;
   start_time: string;
   end_time: string;
@@ -328,9 +329,9 @@ export default function EquipmentCatalog({
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-slate-900 truncate">{r.title}</p>
                         <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500">
-                          {r.profile && (
+                          {(r.reserved_for_name || r.profile) && (
                             <span className="flex items-center gap-1">
-                              <User className="w-3 h-3" /> {r.profile.full_name}
+                              <User className="w-3 h-3" /> {r.reserved_for_name || r.profile?.full_name}
                             </span>
                           )}
                           <span className="flex items-center gap-1">

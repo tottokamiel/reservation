@@ -178,9 +178,9 @@ export default function ReservationsList({ filter, refreshKey }: ReservationsLis
         <div className="flex items-start justify-between gap-4 mb-3">
           <div className="min-w-0">
             <h3 className="font-semibold text-slate-900 truncate">{r.title}</h3>
-            {filter === 'all' && r.profile && (
+            {filter === 'all' && (r.reserved_for_name || r.profile) && (
               <p className="text-sm text-slate-500 mt-0.5 flex items-center gap-1">
-                <User className="w-3.5 h-3.5" /> {r.profile.full_name}
+                <User className="w-3.5 h-3.5" /> {r.reserved_for_name || r.profile?.full_name}
               </p>
             )}
           </div>
@@ -257,14 +257,14 @@ export default function ReservationsList({ filter, refreshKey }: ReservationsLis
                 </div>
 
                 {/* Reserved by */}
-                {detailReservation.profile && (
+                {(detailReservation.reserved_for_name || detailReservation.profile) && (
                   <div className="flex items-center gap-3 mb-5 p-3 rounded-xl bg-slate-50">
                     <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center">
                       <User className="w-4 h-4 text-slate-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-slate-900">{detailReservation.profile.full_name}</p>
-                      <p className="text-xs text-slate-500 capitalize">{detailReservation.profile.role}</p>
+                      <p className="text-sm font-medium text-slate-900">{detailReservation.reserved_for_name || detailReservation.profile?.full_name}</p>
+                      <p className="text-xs text-slate-500 capitalize">{detailReservation.reserved_for_name ? 'Teacher' : detailReservation.profile?.role}</p>
                     </div>
                   </div>
                 )}

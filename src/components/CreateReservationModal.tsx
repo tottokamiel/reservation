@@ -1,7 +1,6 @@
-import { useState, FormEvent, useMemo, useEffect } from 'react';
+import { useState, FormEvent, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
-import type { Profile } from '@/types/database';
 import EquipmentCatalog from '@/components/EquipmentCatalog';
 import { X, Calendar, Clock, Loader2, ShoppingBag, Check, User } from 'lucide-react';
 
@@ -69,21 +68,7 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [teachers, setTeachers] = useState<Profile[]>([]);
-  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
-
-  useEffect(() => {
-    if (isCoordinator) {
-      supabase
-        .from('profiles')
-        .select('*')
-        .eq('role', 'teacher')
-        .order('full_name')
-        .then(({ data }) => {
-          if (data) setTeachers(data as Profile[]);
-        });
-    }
-  }, [isCoordinator]);
+  const [reservedForName, setReservedForName] = useState('');
 
   const reservationDate = useMemo(() => ({
     start: buildISOString(dateStr, startTime),
@@ -168,16 +153,18 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
       return;
     }
 
-    const reservationUserId = isCoordinator && selectedTeacherId
-      ? selectedTeacherId
-      : user!.id;
+    if (isCoordinator && !reservedForName.trim()) {
+      setError('Please enter the teacher’s name for this reservation.');
+      return;
+    }
 
     setSubmitting(true);
 
     const { data: reservation, error: resError } = await supabase
       .from('reservations')
       .insert({
-        user_id: reservationUserId,
+        user_id: user!.id,
+        reserved_for_name: isCoordinator ? reservedForName.trim() : null,
         title: title.trim(),
         purpose: purpose.trim(),
         start_time: start.toISOString(),
@@ -244,20 +231,16 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
                   <User className="w-4 h-4" /> Reserve for Teacher
                 </span>
               </label>
-              <select
-                value={selectedTeacherId}
-                onChange={(e) => setSelectedTeacherId(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-slate-900 bg-white"
-              >
-                <option value="">Myself (Coordinator)</option>
-                {teachers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.full_name || 'Unnamed teacher'}
-                  </option>
-                ))}
-              </select>
+              <input
+                type="text"
+                value={reservedForName}
+                onChange={(e) => setReservedForName(e.target.value)}
+                required
+                placeholder="Enter teacher’s full name"
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-slate-900"
+              />
               <p className="text-xs text-slate-400 mt-1">
-                Select which teacher this reservation is for.
+                This can be a teacher who has not signed up yet.
               </p>
             </div>
           )}

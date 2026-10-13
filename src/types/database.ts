@@ -30,6 +30,7 @@ export interface Equipment {
 export interface Reservation {
   id: string;
   user_id: string;
+  reserved_for_name: string | null;
   title: string;
   purpose: string;
   start_time: string;

@@ -28,6 +28,7 @@ interface CheckoutCalendarProps {
 interface CalendarReservation {
   id: string;
   user_id: string;
+  reserved_for_name: string | null;
   title: string;
   purpose: string;
   start_time: string;
@@ -458,9 +459,9 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
                         <p className="text-sm font-medium text-slate-900 truncate mb-0.5">
                           {r.title}
                         </p>
-                        {r.profile && (
+                        {(r.reserved_for_name || r.profile) && (
                           <p className="text-xs text-slate-500 truncate flex items-center gap-1">
-                            <User className="w-3 h-3" /> {r.profile.full_name}
+                            <User className="w-3 h-3" /> {r.reserved_for_name || r.profile?.full_name}
                           </p>
                         )}
                         <div className="flex items-center gap-1.5 mt-1.5">
@@ -530,14 +531,14 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
               </div>
 
               {/* Reserved by */}
-              {selectedReservation.profile && (
+              {(selectedReservation.reserved_for_name || selectedReservation.profile) && (
                 <div className="flex items-center gap-3 mb-5 p-3 rounded-xl bg-slate-50">
                   <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center">
                     <User className="w-4 h-4 text-slate-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{selectedReservation.profile.full_name}</p>
-                    <p className="text-xs text-slate-500 capitalize">{selectedReservation.profile.role}</p>
+                    <p className="text-sm font-medium text-slate-900">{selectedReservation.reserved_for_name || selectedReservation.profile?.full_name}</p>
+                    <p className="text-xs text-slate-500 capitalize">{selectedReservation.reserved_for_name ? 'Teacher' : selectedReservation.profile?.role}</p>
                   </div>
                 </div>
               )}
