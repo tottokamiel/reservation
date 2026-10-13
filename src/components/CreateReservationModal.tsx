@@ -86,6 +86,11 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
     setDateStr(value);
     if (new Date(value) > new Date(endDateStr)) {
       setEndDateStr(value);
+      if (TIME_SLOTS.indexOf(endTime) <= TIME_SLOTS.indexOf(startTime)) {
+        setEndTime(defaultTimeSlot(startTime));
+      }
+    } else if (value === endDateStr && TIME_SLOTS.indexOf(endTime) <= TIME_SLOTS.indexOf(startTime)) {
+      setEndTime(defaultTimeSlot(startTime));
     }
   }
 
@@ -98,11 +103,14 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
     }
     setError(null);
     setEndDateStr(value);
+    if (value === dateStr && TIME_SLOTS.indexOf(endTime) <= TIME_SLOTS.indexOf(startTime)) {
+      setEndTime(defaultTimeSlot(startTime));
+    }
   }
 
   function handleStartTimeChange(value: string) {
     setStartTime(value);
-    if (TIME_SLOTS.indexOf(value) >= TIME_SLOTS.indexOf(endTime)) {
+    if (dateStr === endDateStr && TIME_SLOTS.indexOf(value) >= TIME_SLOTS.indexOf(endTime)) {
       setEndTime(defaultTimeSlot(value));
     }
   }
@@ -200,6 +208,9 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
   }
 
   const selectedCount = selectedIds.size;
+  const endTimeOptions = endDateStr === dateStr
+    ? TIME_SLOTS.filter((t) => TIME_SLOTS.indexOf(t) > TIME_SLOTS.indexOf(startTime))
+    : TIME_SLOTS;
 
   return (
     <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center bg-black/50 backdrop-blur-sm overflow-y-auto">
@@ -327,7 +338,7 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
                   onChange={(e) => setEndTime(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-slate-900 bg-white"
                 >
-                  {TIME_SLOTS.filter((t) => TIME_SLOTS.indexOf(t) > TIME_SLOTS.indexOf(startTime)).map((t) => (
+                  {endTimeOptions.map((t) => (
                     <option key={t} value={t}>{t}</option>
                   ))}
                 </select>

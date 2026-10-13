@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import type { Reservation } from '@/types/database';
+import EditReservationModal from '@/components/EditReservationModal';
 import {
   ReservationStatusBadge,
   formatDateTime,
@@ -17,6 +18,7 @@ import {
   X,
   Trash2,
   ArrowRight,
+  Pencil,
 } from 'lucide-react';
 
 interface ReservationsListProps {
@@ -33,6 +35,7 @@ export default function ReservationsList({ filter, refreshKey }: ReservationsLis
   const [detailReservation, setDetailReservation] = useState<Reservation | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [canceling, setCanceling] = useState(false);
+  const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
 
   const loadReservations = useCallback(async () => {
     setLoading(true);
@@ -165,7 +168,9 @@ export default function ReservationsList({ filter, refreshKey }: ReservationsLis
 
   const now = new Date();
   const upcoming = reservations.filter((r) => new Date(r.end_time) >= now && r.status !== 'cancelled' && r.status !== 'checked_in');
-  const past = reservations.filter((r) => new Date(r.end_time) < now || r.status === 'cancelled' || r.status === 'checked_in');
+  const past = reservations
+    .filter((r) => new Date(r.end_time) < now || r.status === 'cancelled' || r.status === 'checked_in')
+    .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
 
   function renderReservationCard(r: Reservation) {
     const itemCount = detailReservation?.id === r.id ? detailReservation.items?.length : null;
@@ -386,6 +391,14 @@ export default function ReservationsList({ filter, refreshKey }: ReservationsLis
 
                 {/* Actions */}
                 <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100">
+                  {isCoordinator && (detailReservation.status === 'approved' || detailReservation.status === 'checked_out') && (
+                    <button
+                      onClick={() => setEditingReservation(detailReservation)}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-blue-200 text-blue-600 hover:bg-blue-50 font-medium text-sm transition-colors"
+                    >
+                      <Pencil className="w-4 h-4" /> Edit Reservation
+                    </button>
+                  )}
                   {/* Teacher: Cancel own active reservation */}
                   {!isCoordinator && (detailReservation.status === 'approved' || detailReservation.status === 'checked_out') && (
                     <button
@@ -424,6 +437,18 @@ export default function ReservationsList({ filter, refreshKey }: ReservationsLis
             )}
           </div>
         </div>
+      )}
+
+      {editingReservation && (
+        <EditReservationModal
+          reservation={editingReservation}
+          onClose={() => setEditingReservation(null)}
+          onSaved={async () => {
+            setEditingReservation(null);
+            await loadReservations();
+            await loadDetail(editingReservation.id);
+          }}
+        />
       )}
     </div>
   );

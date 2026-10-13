@@ -23,6 +23,7 @@ import {
   X,
   CalendarSearch,
   History,
+  Check,
   User,
   Clock,
 } from 'lucide-react';
@@ -81,6 +82,11 @@ export default function EquipmentCatalog({
   const [editingItem, setEditingItem] = useState<Equipment | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [categoryNames, setCategoryNames] = useState<string[]>([]);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [newCategory, setNewCategory] = useState('');
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [editingCategoryName, setEditingCategoryName] = useState('');
 
   const isCoordinator = profile?.role === 'coordinator';
 
@@ -121,6 +127,23 @@ export default function EquipmentCatalog({
   useEffect(() => {
     loadEquipment();
   }, [loadEquipment]);
+
+  const loadCategories = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('equipment_categories')
+      .select('name')
+      .order('name');
+
+    if (error) {
+      console.error('Error loading categories:', error);
+    } else if (data) {
+      setCategoryNames(data.map((category) => category.name));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isCoordinator) loadCategories();
+  }, [isCoordinator, loadCategories]);
 
   useEffect(() => {
     async function checkConflicts() {
@@ -211,10 +234,12 @@ export default function EquipmentCatalog({
     setHistoryLoading(false);
   }
 
-  const categories = useMemo(() => {
-    const set = new Set(equipment.map((e) => e.category));
-    return ['all', ...Array.from(set).sort()];
-  }, [equipment]);
+  const categoryOptions = useMemo((): string[] => {
+    const set = new Set([...categoryNames, ...equipment.map((item) => item.category)]);
+    return Array.from(set).filter(Boolean).sort();
+  }, [categoryNames, equipment]);
+
+  const categories = useMemo((): string[] => ['all', ...categoryOptions], [categoryOptions]);
 
   const groups: EquipmentGroup[] = useMemo(() => {
     const filtered = equipment.filter((item) => {
@@ -236,6 +261,63 @@ export default function EquipmentCatalog({
     }
     return Object.values(map);
   }, [equipment, search, categoryFilter]);
+
+  async function addCategory() {
+    const name = newCategory.trim().toLowerCase();
+    if (!name) return;
+    const { error } = await supabase.from('equipment_categories').insert({ name });
+    if (error) {
+      alert('Could not add category: ' + error.message);
+      return;
+    }
+    setNewCategory('');
+    await loadCategories();
+  }
+
+  async function renameCategory(oldName: string) {
+    const name = editingCategoryName.trim().toLowerCase();
+    if (!name || name === oldName) {
+      setEditingCategory(null);
+      return;
+    }
+    if (categoryOptions.some((category) => category.toLowerCase() === name.toLowerCase() && category !== oldName)) {
+      alert('A category with that name already exists.');
+      return;
+    }
+
+    const { error: categoryError } = await supabase
+      .from('equipment_categories')
+      .update({ name })
+      .eq('name', oldName);
+    if (categoryError) {
+      alert('Could not rename category: ' + categoryError.message);
+      return;
+    }
+
+    const { error: equipmentError } = await supabase
+      .from('equipment')
+      .update({ category: name })
+      .eq('category', oldName);
+    if (equipmentError) {
+      alert('Category renamed, but existing equipment could not be updated: ' + equipmentError.message);
+    }
+    setEditingCategory(null);
+    await Promise.all([loadCategories(), loadEquipment()]);
+  }
+
+  async function deleteCategory(name: string) {
+    if (equipment.some((item) => item.category === name)) {
+      alert('This category cannot be deleted while equipment is using it. Rename it or move those items first.');
+      return;
+    }
+    if (!confirm(`Delete the ${name} category?`)) return;
+    const { error } = await supabase.from('equipment_categories').delete().eq('name', name);
+    if (error) {
+      alert('Could not delete category: ' + error.message);
+      return;
+    }
+    await loadCategories();
+  }
 
   async function handleDeleteItem(id: string, name: string) {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
@@ -296,6 +378,17 @@ export default function EquipmentCatalog({
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
           >
             <Plus className="w-4 h-4" /> Add Equipment
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowCategoryManager(!showCategoryManager)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+              showCategoryManager
+                ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'
+            }`}
+          >
+            <Package className="w-4 h-4" /> Manage Categories
           </button>
           <button
             type="button"
@@ -386,11 +479,64 @@ export default function EquipmentCatalog({
         </div>
       )}
 
+      {isCoordinator && showCategoryManager && (
+        <div className="mb-4 bg-white rounded-2xl border border-slate-200 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900">Equipment Categories</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Add, rename, or remove categories used by your equipment.</p>
+            </div>
+            <button type="button" onClick={() => setShowCategoryManager(false)} className="p-1.5 rounded-lg hover:bg-slate-100">
+              <X className="w-4 h-4 text-slate-500" />
+            </button>
+          </div>
+          <div className="flex gap-2 mb-3">
+            <input
+              type="text"
+              value={newCategory}
+              onChange={(event) => setNewCategory(event.target.value)}
+              onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addCategory(); } }}
+              placeholder="New category name"
+              className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+            />
+            <button type="button" onClick={addCategory} className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">
+              Add
+            </button>
+          </div>
+          <div className="space-y-2">
+            {categoryNames.map((category) => (
+              <div key={category} className="flex items-center gap-2 p-2 rounded-lg bg-slate-50">
+                {editingCategory === category ? (
+                  <>
+                    <input
+                      autoFocus
+                      value={editingCategoryName}
+                      onChange={(event) => setEditingCategoryName(event.target.value)}
+                      onKeyDown={(event) => { if (event.key === 'Enter') renameCategory(category); }}
+                      className="flex-1 px-2 py-1 rounded border border-blue-300 text-sm text-slate-900 outline-none"
+                    />
+                    <button type="button" onClick={() => renameCategory(category)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"><Check className="w-4 h-4" /></button>
+                    <button type="button" onClick={() => setEditingCategory(null)} className="p-1 text-slate-400 hover:bg-slate-200 rounded"><X className="w-4 h-4" /></button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm text-slate-700">{category}</span>
+                    <button type="button" onClick={() => { setEditingCategory(category); setEditingCategoryName(category); }} className="p-1 text-slate-500 hover:bg-slate-200 rounded"><Pencil className="w-4 h-4" /></button>
+                    <button type="button" onClick={() => deleteCategory(category)} className="p-1 text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Add form (not editing existing item) */}
       {showAddForm && !editingItem && isCoordinator && (
         <EquipmentForm
           key="new"
           equipment={null}
+          categories={categoryOptions}
           onClose={() => { setShowAddForm(false); setEditingItem(null); }}
           onSaved={() => { setShowAddForm(false); setEditingItem(null); loadEquipment(); }}
         />
@@ -523,6 +669,7 @@ export default function EquipmentCatalog({
                             <EquipmentForm
                               key={item.id}
                               equipment={editingItem}
+                              categories={categoryOptions}
                               onClose={() => setEditingItem(null)}
                               onSaved={() => { setEditingItem(null); loadEquipment(); }}
                             />
@@ -614,10 +761,12 @@ export default function EquipmentCatalog({
 // ============================================================
 function EquipmentForm({
   equipment,
+  categories,
   onClose,
   onSaved,
 }: {
   equipment: Equipment | null;
+  categories: string[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -695,12 +844,11 @@ function EquipmentForm({
             onChange={(e) => setCategory(e.target.value)}
             className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-sm text-slate-900 bg-white"
           >
-            <option value="projector">Projector</option>
-            <option value="microphone">Microphone</option>
-            <option value="speaker">Speaker</option>
-            <option value="cable">Cable</option>
-            <option value="screen">Screen</option>
-            <option value="mixer">Mixer</option>
+            {Array.from(new Set([...categories, category])).filter(Boolean).map((categoryOption) => (
+              <option key={categoryOption} value={categoryOption}>
+                {categoryOption.charAt(0).toUpperCase() + categoryOption.slice(1)}
+              </option>
+            ))}
           </select>
         </div>
 
