@@ -577,32 +577,6 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
                 </div>
               )}
 
-              {/* Condition selector */}
-              <div className="mb-4">
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">
-                  Equipment Condition
-                </label>
-                <div className="flex gap-2">
-                  {['good', 'fair', 'needs_repair'].map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => setCondition(c)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${
-                        condition === c
-                          ? c === 'good'
-                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
-                            : c === 'fair'
-                            ? 'bg-amber-100 text-amber-700 border border-amber-300'
-                            : 'bg-red-100 text-red-700 border border-red-300'
-                          : 'bg-slate-50 text-slate-500 border border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      {c.replace('_', ' ')}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Equipment items */}
               <div className="mb-5">
                 <h3 className="text-sm font-semibold text-slate-700 mb-3">
