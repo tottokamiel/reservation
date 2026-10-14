@@ -118,14 +118,8 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
   const [selectedReservation, setSelectedReservation] = useState<CalendarReservation | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [condition, setCondition] = useState('good');
+  const [condition] = useState('good');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [pendingAction, setPendingAction] = useState<{
-    type: 'checkout' | 'checkin';
-    itemName: string;
-    itemId: string;
-    checkoutId?: string;
-  } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -223,85 +217,69 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
     }
   }
 
-  function requestCheckout(item: CalendarReservation['items'][0]) {
-    setPendingAction({
-      type: 'checkout',
-      itemName: item.equipment.name,
-      itemId: item.equipment_id,
-    });
-  }
-
-  function requestCheckin(checkout: CheckoutItem) {
-    setPendingAction({
-      type: 'checkin',
-      itemName: checkout.equipment.name,
-      itemId: checkout.equipment_id,
-      checkoutId: checkout.id,
-    });
-  }
-
-  async function confirmAction() {
-    if (!pendingAction || !user || !profile || !selectedReservation) return;
+  async function requestCheckout(item: CalendarReservation['items'][0]) {
+    if (!user || !profile || !selectedReservation || processing) return;
 
     setProcessing(true);
 
-    if (pendingAction.type === 'checkout') {
-      const { error } = await supabase.from('checkouts').insert({
-        reservation_id: selectedReservation.id,
-        equipment_id: pendingAction.itemId,
-        checked_out_by: user.id,
-        condition_out: condition,
-        notes: '',
-      });
+    const { error } = await supabase.from('checkouts').insert({
+      reservation_id: selectedReservation.id,
+      equipment_id: item.equipment_id,
+      checked_out_by: user.id,
+      condition_out: condition,
+      notes: '',
+    });
 
-      if (error) {
-        console.error('Checkout error:', error);
-        alert('Failed to check out item: ' + error.message);
-      } else {
-        await supabase
-          .from('equipment')
-          .update({ status: 'in_use' })
-          .eq('id', pendingAction.itemId);
-        await checkAndUpdateReservationStatus(selectedReservation.id);
-        await load();
-        const refreshed = await reloadReservation(selectedReservation.id);
-        if (refreshed) setSelectedReservation(refreshed);
-        setSuccessMessage(`${pendingAction.itemName} checked out successfully`);
-        setTimeout(() => setSuccessMessage(null), 2500);
-      }
-    } else if (pendingAction.type === 'checkin' && pendingAction.checkoutId) {
-      const { error } = await supabase
-        .from('checkouts')
-        .update({
-          checked_in_by: user.id,
-          checked_in_at: new Date().toISOString(),
-          condition_in: condition,
-        })
-        .eq('id', pendingAction.checkoutId);
-
-      if (error) {
-        console.error('Checkin error:', error);
-        alert('Failed to check in item: ' + error.message);
-      } else {
-        await supabase
-          .from('equipment')
-          .update({ status: 'available' })
-          .eq('id', pendingAction.itemId);
-        await checkAndUpdateReservationStatus(selectedReservation.id);
-        await load();
-        const refreshed = await reloadReservation(selectedReservation.id);
-        if (refreshed) setSelectedReservation(refreshed);
-        setSuccessMessage(`${pendingAction.itemName} returned successfully`);
-        setTimeout(() => setSuccessMessage(null), 2500);
-      }
+    if (error) {
+      console.error('Checkout error:', error);
+      alert('Failed to check out item: ' + error.message);
+    } else {
+      await supabase
+        .from('equipment')
+        .update({ status: 'in_use' })
+        .eq('id', item.equipment_id);
+      await checkAndUpdateReservationStatus(selectedReservation.id);
+      await load();
+      const refreshed = await reloadReservation(selectedReservation.id);
+      if (refreshed) setSelectedReservation(refreshed);
+      setSuccessMessage(`${item.equipment.name} checked out successfully`);
+      setTimeout(() => setSuccessMessage(null), 2500);
     }
 
-    setPendingAction(null);
     setProcessing(false);
   }
 
-  function cancelAction() {
-    setPendingAction(null);
+  async function requestCheckin(checkout: CheckoutItem) {
+    if (!user || !profile || !selectedReservation || processing) return;
+
+    setProcessing(true);
+
+    const { error } = await supabase
+      .from('checkouts')
+      .update({
+        checked_in_by: user.id,
+        checked_in_at: new Date().toISOString(),
+        condition_in: condition,
+      })
+      .eq('id', checkout.id);
+
+    if (error) {
+      console.error('Checkin error:', error);
+      alert('Failed to check in item: ' + error.message);
+    } else {
+      await supabase
+        .from('equipment')
+        .update({ status: 'available' })
+        .eq('id', checkout.equipment_id);
+      await checkAndUpdateReservationStatus(selectedReservation.id);
+      await load();
+      const refreshed = await reloadReservation(selectedReservation.id);
+      if (refreshed) setSelectedReservation(refreshed);
+      setSuccessMessage(`${checkout.equipment.name} returned successfully`);
+      setTimeout(() => setSuccessMessage(null), 2500);
+    }
+
+    setProcessing(false);
   }
 
   const weekDays = useMemo(() => {
@@ -519,7 +497,7 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
       {selectedReservation && (
         <div
           className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm"
-          onClick={() => { setSelectedReservation(null); setPendingAction(null); }}
+          onClick={() => { setSelectedReservation(null); }}
         >
           <div
             className="bg-white w-full max-w-lg h-full overflow-y-auto shadow-2xl"
@@ -533,7 +511,7 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
                   <ReservationStatusBadge status={selectedReservation.status} />
                 </div>
                 <button
-                  onClick={() => { setSelectedReservation(null); setPendingAction(null); }}
+                  onClick={() => { setSelectedReservation(null); }}
                   className="p-2 rounded-lg hover:bg-slate-100 transition-colors shrink-0"
                 >
                   <X className="w-5 h-5 text-slate-500" />
@@ -644,75 +622,6 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
                   })}
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Confirmation Modal */}
-      {pendingAction && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm"
-          onClick={cancelAction}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                pendingAction.type === 'checkout' ? 'bg-sky-100' : 'bg-orange-100'
-              }`}>
-                {pendingAction.type === 'checkout' ? (
-                  <ArrowUpFromLine className="w-6 h-6 text-sky-600" />
-                ) : (
-                  <ArrowDownToLine className="w-6 h-6 text-orange-600" />
-                )}
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-900">
-                  {pendingAction.type === 'checkout' ? 'Confirm Check Out' : 'Confirm Check In'}
-                </h3>
-                <p className="text-sm text-slate-500">{pendingAction.itemName}</p>
-              </div>
-            </div>
-
-            <div className="mb-5 p-3 rounded-xl bg-slate-50 text-sm">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-slate-500">Condition</span>
-                <span className="font-medium text-slate-900 capitalize">{condition.replace('_', ' ')}</span>
-              </div>
-              <p className="text-xs text-slate-400 mt-1">
-                {pendingAction.type === 'checkout'
-                  ? 'This item will be marked as handed out to the teacher.'
-                  : 'This item will be marked as returned and available again.'}
-              </p>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={cancelAction}
-                disabled={processing}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium text-sm transition-colors disabled:opacity-60"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmAction}
-                disabled={processing}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white font-medium text-sm transition-colors disabled:opacity-60 ${
-                  pendingAction.type === 'checkout'
-                    ? 'bg-sky-600 hover:bg-sky-700'
-                    : 'bg-orange-600 hover:bg-orange-700'
-                }`}
-              >
-                {processing ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Check className="w-4 h-4" />
-                )}
-                {pendingAction.type === 'checkout' ? 'Confirm Hand Out' : 'Confirm Return'}
-              </button>
             </div>
           </div>
         </div>
