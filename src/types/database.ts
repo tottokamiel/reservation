@@ -37,6 +37,7 @@ export interface Reservation {
   end_time: string;
   status: ReservationStatus;
   created_at: string;
+  pickup_location: string | null;
   // joined fields
   profile?: Profile;
   items?: ReservationItemWithEquipment[];

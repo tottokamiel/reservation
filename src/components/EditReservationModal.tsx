@@ -2,7 +2,7 @@ import { useMemo, useState, FormEvent } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Reservation } from '@/types/database';
 import EquipmentCatalog from '@/components/EquipmentCatalog';
-import { Calendar, Check, Clock, Loader2, User, X } from 'lucide-react';
+import { Calendar, Check, Clock, Loader2, MapPin, User, X } from 'lucide-react';
 
 interface EditReservationModalProps {
   reservation: Reservation;
@@ -45,6 +45,7 @@ function isWeekend(value: string): boolean {
 export default function EditReservationModal({ reservation, onClose, onSaved }: EditReservationModalProps) {
   const [title, setTitle] = useState(reservation.title);
   const [purpose, setPurpose] = useState(reservation.purpose);
+  const [pickupLocation, setPickupLocation] = useState(reservation.pickup_location || '');
   const [reservedForName, setReservedForName] = useState(reservation.reserved_for_name || '');
   const [dateStr, setDateStr] = useState(toDateInput(reservation.start_time));
   const [endDateStr, setEndDateStr] = useState(toDateInput(reservation.end_time));
@@ -110,6 +111,7 @@ export default function EditReservationModal({ reservation, onClose, onSaved }: 
       .update({
         title: title.trim(),
         purpose: purpose.trim(),
+        pickup_location: pickupLocation.trim() || null,
         reserved_for_name: reservedForName.trim() || null,
         start_time: startIso,
         end_time: endIso,
@@ -197,6 +199,10 @@ export default function EditReservationModal({ reservation, onClose, onSaved }: 
                 <select value={endTime} onChange={(event) => setEndTime(event.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-500 text-slate-900 bg-white">
                   {endTimeOptions.map((time) => <option key={time} value={time}>{time}</option>)}
                 </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1.5"><MapPin className="w-4 h-4" /> Pickup/Dropoff Location</label>
+                <input value={pickupLocation} onChange={(event) => setPickupLocation(event.target.value)} placeholder="e.g. Main office, Room 101" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-slate-900" />
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Purpose</label>

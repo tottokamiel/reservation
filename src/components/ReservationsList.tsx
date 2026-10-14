@@ -19,6 +19,7 @@ import {
   Trash2,
   ArrowRight,
   Pencil,
+  MapPin,
 } from 'lucide-react';
 
 interface ReservationsListProps {
@@ -291,6 +292,16 @@ export default function ReservationsList({ filter, refreshKey }: ReservationsLis
                   <div className="mb-5">
                     <p className="text-xs text-slate-400 mb-1">Purpose</p>
                     <p className="text-sm text-slate-700">{detailReservation.purpose}</p>
+                  </div>
+                )}
+
+                {/* Pickup/Dropoff Location */}
+                {detailReservation.pickup_location && (
+                  <div className="mb-5">
+                    <p className="text-xs text-slate-400 mb-1">Pickup/Dropoff Location</p>
+                    <p className="text-sm text-slate-700 flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-slate-400" /> {detailReservation.pickup_location}
+                    </p>
                   </div>
                 )}
 

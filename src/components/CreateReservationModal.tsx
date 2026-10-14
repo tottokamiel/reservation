@@ -2,7 +2,7 @@ import { useState, FormEvent, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import EquipmentCatalog from '@/components/EquipmentCatalog';
-import { X, Calendar, Clock, Loader2, ShoppingBag, Check, User } from 'lucide-react';
+import { X, Calendar, Clock, Loader2, ShoppingBag, Check, User, MapPin } from 'lucide-react';
 
 interface CreateReservationModalProps {
   onClose: () => void;
@@ -60,6 +60,7 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
 
   const [title, setTitle] = useState('');
   const [purpose, setPurpose] = useState('');
+  const [pickupLocation, setPickupLocation] = useState('');
   const [dateStr, setDateStr] = useState(defaultDate());
   const [endDateStr, setEndDateStr] = useState(defaultDate());
   const [startTime, setStartTime] = useState('09:00');
@@ -175,6 +176,7 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
         reserved_for_name: isCoordinator ? reservedForName.trim() : null,
         title: title.trim(),
         purpose: purpose.trim(),
+        pickup_location: pickupLocation.trim() || null,
         start_time: start.toISOString(),
         end_time: end.toISOString(),
         status: 'approved',
@@ -342,6 +344,21 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
                     <option key={t} value={t}>{t}</option>
                   ))}
                 </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <span className="flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4" /> Pickup/Dropoff Location
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={pickupLocation}
+                  onChange={(e) => setPickupLocation(e.target.value)}
+                  placeholder="e.g. Main office, Room 101"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-slate-900"
+                />
               </div>
 
               <div className="sm:col-span-2">

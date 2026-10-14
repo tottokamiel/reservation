@@ -22,6 +22,7 @@ import {
   AlertTriangle,
   Pencil,
   Trash2,
+  MapPin,
 } from 'lucide-react';
 
 interface CheckoutCalendarProps {
@@ -38,6 +39,7 @@ interface CalendarReservation {
   end_time: string;
   status: ReservationStatus;
   created_at: string;
+  pickup_location: string | null;
   profile: { id: string; full_name: string; role: string } | null;
   items: { id: string; equipment_id: string; equipment: { id: string; name: string; category: string; type: string; status: string } }[];
   checkouts: CheckoutItem[];
@@ -581,6 +583,16 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
                 <div className="mb-5">
                   <p className="text-xs text-slate-400 mb-1">Purpose</p>
                   <p className="text-sm text-slate-700">{selectedReservation.purpose}</p>
+                </div>
+              )}
+
+              {/* Pickup/Dropoff Location */}
+              {selectedReservation.pickup_location && (
+                <div className="mb-5">
+                  <p className="text-xs text-slate-400 mb-1">Pickup/Dropoff Location</p>
+                  <p className="text-sm text-slate-700 flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4 text-slate-400" /> {selectedReservation.pickup_location}
+                  </p>
                 </div>
               )}
 
