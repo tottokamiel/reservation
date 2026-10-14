@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
-import type { ReservationStatus } from '@/types/database';
+import type { ReservationStatus, Reservation } from '@/types/database';
+import EditReservationModal from '@/components/EditReservationModal';
 import {
   ReservationStatusBadge,
   formatTime,
@@ -19,6 +20,8 @@ import {
   CalendarDays,
   X,
   AlertTriangle,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 
 interface CheckoutCalendarProps {
@@ -36,7 +39,7 @@ interface CalendarReservation {
   status: ReservationStatus;
   created_at: string;
   profile: { id: string; full_name: string; role: string } | null;
-  items: { id: string; equipment_id: string; equipment: { id: string; name: string; category: string; type: string } }[];
+  items: { id: string; equipment_id: string; equipment: { id: string; name: string; category: string; type: string; status: string } }[];
   checkouts: CheckoutItem[];
 }
 
@@ -51,7 +54,7 @@ interface CheckoutItem {
   condition_out: string;
   condition_in: string | null;
   notes: string;
-  equipment: { id: string; name: string; category: string; type: string };
+  equipment: { id: string; name: string; category: string; type: string; status: string };
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -120,6 +123,8 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
   const [processing, setProcessing] = useState(false);
   const [condition] = useState('good');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
+  const [canceling, setCanceling] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -140,7 +145,7 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
            checked_out_by, checked_out_at,
            checked_in_by, checked_in_at,
            condition_out, condition_in, notes,
-           equipment:equipment ( id, name, category, type )
+           equipment:equipment ( id, name, category, type, status )
          )`
       )
       .in('status', ['approved', 'checked_out', 'checked_in'])
@@ -175,7 +180,7 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
            checked_out_by, checked_out_at,
            checked_in_by, checked_in_at,
            condition_out, condition_in, notes,
-           equipment:equipment ( id, name, category, type )
+           equipment:equipment ( id, name, category, type, status )
          )`
       )
       .eq('id', id)
@@ -219,6 +224,12 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
 
   async function requestCheckout(item: CalendarReservation['items'][0]) {
     if (!user || !profile || !selectedReservation || processing) return;
+
+    if (item.equipment.status === 'maintenance') {
+      if (!confirm(`${item.equipment.name} is currently marked as maintenance. Are you sure you want to hand it out?`)) {
+        return;
+      }
+    }
 
     setProcessing(true);
 
@@ -280,6 +291,24 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
     }
 
     setProcessing(false);
+  }
+
+  async function cancelReservation(id: string) {
+    if (!confirm('Cancel this reservation?')) return;
+    setCanceling(true);
+    const { error } = await supabase
+      .from('reservations')
+      .update({ status: 'cancelled' })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error cancelling reservation:', error);
+      alert('Failed to cancel reservation: ' + error.message);
+    } else {
+      setSelectedReservation(null);
+      await load();
+    }
+    setCanceling(false);
   }
 
   const weekDays = useMemo(() => {
@@ -593,11 +622,20 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          {!isCheckedOut && item.equipment.status === 'maintenance' && (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">
+                              <AlertTriangle className="w-3 h-3" /> Maintenance
+                            </span>
+                          )}
                           {!isCheckedOut && (
                             <button
                               onClick={() => requestCheckout(item)}
                               disabled={processing}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-medium transition-colors disabled:opacity-60"
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-medium transition-colors disabled:opacity-60 ${
+                                item.equipment.status === 'maintenance'
+                                  ? 'bg-amber-600 hover:bg-amber-700'
+                                  : 'bg-sky-600 hover:bg-sky-700'
+                              }`}
                             >
                               <ArrowUpFromLine className="w-3.5 h-3.5" /> Hand out
                             </button>
@@ -622,9 +660,41 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
                   })}
                 </div>
               </div>
+
+              {/* Actions */}
+              {(selectedReservation.status === 'approved' || selectedReservation.status === 'checked_out') && (
+                <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-100">
+                  <button
+                    onClick={() => setEditingReservation(selectedReservation as unknown as Reservation)}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-blue-200 text-blue-600 hover:bg-blue-50 font-medium text-sm transition-colors"
+                  >
+                    <Pencil className="w-4 h-4" /> Edit Reservation
+                  </button>
+                  <button
+                    onClick={() => cancelReservation(selectedReservation.id)}
+                    disabled={canceling}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium text-sm transition-colors disabled:opacity-60"
+                  >
+                    <Trash2 className="w-4 h-4" /> Cancel Reservation
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
+      )}
+
+      {editingReservation && (
+        <EditReservationModal
+          reservation={editingReservation}
+          onClose={() => setEditingReservation(null)}
+          onSaved={async () => {
+            setEditingReservation(null);
+            await load();
+            const refreshed = await reloadReservation(editingReservation.id);
+            if (refreshed) setSelectedReservation(refreshed);
+          }}
+        />
       )}
     </div>
   );
