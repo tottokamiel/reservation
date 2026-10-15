@@ -267,7 +267,8 @@ export default function EquipmentCatalog({
     if (!name) return;
     const { error } = await supabase.from('equipment_categories').insert({ name });
     if (error) {
-      alert('Could not add category: ' + error.message);
+      console.error('Error adding category:', error);
+      alert('This category could not be added. It may already exist.');
       return;
     }
     setNewCategory('');
@@ -290,7 +291,8 @@ export default function EquipmentCatalog({
       .update({ name })
       .eq('name', oldName);
     if (categoryError) {
-      alert('Could not rename category: ' + categoryError.message);
+      console.error('Error renaming category:', categoryError);
+      alert('This category could not be renamed. Please try again.');
       return;
     }
 
@@ -299,7 +301,8 @@ export default function EquipmentCatalog({
       .update({ category: name })
       .eq('category', oldName);
     if (equipmentError) {
-      alert('Category renamed, but existing equipment could not be updated: ' + equipmentError.message);
+      console.error('Error updating equipment category:', equipmentError);
+      alert('The category was renamed, but the equipment in it could not be updated. Please refresh and try again.');
     }
     setEditingCategory(null);
     await Promise.all([loadCategories(), loadEquipment()]);
@@ -313,7 +316,8 @@ export default function EquipmentCatalog({
     if (!confirm(`Delete the ${name} category?`)) return;
     const { error } = await supabase.from('equipment_categories').delete().eq('name', name);
     if (error) {
-      alert('Could not delete category: ' + error.message);
+      console.error('Error deleting category:', error);
+      alert('This category could not be deleted. Please try again.');
       return;
     }
     await loadCategories();
@@ -323,7 +327,8 @@ export default function EquipmentCatalog({
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
     const { error } = await supabase.from('equipment').delete().eq('id', id);
     if (error) {
-      alert('Failed to delete: ' + error.message);
+      console.error('Error deleting equipment:', error);
+      alert('This item could not be deleted. Please try again.');
     } else {
       await loadEquipment();
     }
@@ -804,7 +809,8 @@ function EquipmentForm({
     }
 
     if (result.error) {
-      setError(result.error.message);
+      console.error('Error saving equipment:', result.error);
+      setError('This item could not be saved. Please check the details and try again.');
       setSaving(false);
       return;
     }

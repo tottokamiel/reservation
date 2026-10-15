@@ -191,36 +191,11 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
   }
 
   async function checkAndUpdateReservationStatus(reservationId: string) {
-    const { data } = await supabase
-      .from('reservations')
-      .select(
-        `*,
-         items:reservation_items ( id ),
-         checkouts:checkouts ( id, checked_in_at )`
-      )
-      .eq('id', reservationId)
-      .maybeSingle();
-
-    if (!data) return;
-
-    const totalItems = data.items?.length || 0;
-    const totalCheckouts = data.checkouts?.length || 0;
-    const totalCheckedIn = data.checkouts?.filter((c: any) => c.checked_in_at).length || 0;
-
-    let newStatus: ReservationStatus = data.status;
-    if (totalCheckouts === totalItems && totalCheckedIn === 0) {
-      newStatus = 'checked_out';
-    } else if (totalCheckedIn === totalItems) {
-      newStatus = 'checked_in';
-    } else if (totalCheckouts > 0 && totalCheckouts < totalItems) {
-      newStatus = 'checked_out';
-    }
-
-    if (newStatus !== data.status) {
-      await supabase
-        .from('reservations')
-        .update({ status: newStatus })
-        .eq('id', reservationId);
+    const { error } = await supabase.rpc('sync_reservation_status', {
+      reservation_id: reservationId,
+    });
+    if (error) {
+      console.error('Error syncing reservation status:', error);
     }
   }
 
@@ -245,7 +220,7 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
 
     if (error) {
       console.error('Checkout error:', error);
-      alert('Failed to check out item: ' + error.message);
+      alert('This item could not be handed out. Please refresh and try again.');
     } else {
       await supabase
         .from('equipment')
@@ -278,7 +253,7 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
 
     if (error) {
       console.error('Checkin error:', error);
-      alert('Failed to check in item: ' + error.message);
+      alert('This item could not be returned. Please refresh and try again.');
     } else {
       await supabase
         .from('equipment')
@@ -298,14 +273,13 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
   async function cancelReservation(id: string) {
     if (!confirm('Cancel this reservation?')) return;
     setCanceling(true);
-    const { error } = await supabase
-      .from('reservations')
-      .update({ status: 'cancelled' })
-      .eq('id', id);
+    const { error } = await supabase.rpc('cancel_reservation', {
+      reservation_id: id,
+    });
 
     if (error) {
       console.error('Error cancelling reservation:', error);
-      alert('Failed to cancel reservation: ' + error.message);
+      alert('This reservation could not be cancelled. Please refresh and try again.');
     } else {
       setSelectedReservation(null);
       await load();

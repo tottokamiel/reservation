@@ -119,7 +119,8 @@ export default function EditReservationModal({ reservation, onClose, onSaved }: 
       .eq('id', reservation.id);
 
     if (reservationError) {
-      setError(reservationError.message);
+      console.error('Error saving reservation:', reservationError);
+      setError('These changes could not be saved. Please try again.');
       setSaving(false);
       return;
     }
@@ -135,7 +136,8 @@ export default function EditReservationModal({ reservation, onClose, onSaved }: 
         .eq('reservation_id', reservation.id)
         .in('equipment_id', removedIds);
       if (removeError) {
-        setError('Reservation details saved, but equipment could not be removed: ' + removeError.message);
+        console.error('Error removing reservation items:', removeError);
+        setError('The reservation details were saved, but the equipment could not be removed. Please try again.');
         setSaving(false);
         return;
       }
@@ -146,7 +148,8 @@ export default function EditReservationModal({ reservation, onClose, onSaved }: 
         .from('reservation_items')
         .insert(addedIds.map((equipmentId) => ({ reservation_id: reservation.id, equipment_id: equipmentId })));
       if (addError) {
-        setError('Reservation details saved, but equipment could not be added: ' + addError.message);
+        console.error('Error adding reservation items:', addError);
+        setError('The reservation details were saved, but the equipment could not be added. Please try again.');
         setSaving(false);
         return;
       }

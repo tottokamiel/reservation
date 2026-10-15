@@ -146,6 +146,10 @@ export default function AuthPage() {
                     Equipment Coordinator
                   </button>
                 </div>
+                <p className="text-xs text-slate-400 mt-1.5">
+                  Coordinator access is granted by an existing coordinator. New
+                  accounts start as a teacher.
+                </p>
               </div>
             )}
 

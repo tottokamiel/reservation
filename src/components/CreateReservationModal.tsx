@@ -185,7 +185,8 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
       .single();
 
     if (resError || !reservation) {
-      setError(resError?.message || 'Failed to create reservation.');
+      console.error('Error creating reservation:', resError);
+      setError('This reservation could not be created. Please check the details and try again.');
       setSubmitting(false);
       return;
     }
@@ -200,7 +201,8 @@ export default function CreateReservationModal({ onClose, onCreated }: CreateRes
       .insert(items);
 
     if (itemsError) {
-      setError('Reservation created but some items could not be added: ' + itemsError.message);
+      console.error('Error adding reservation items:', itemsError);
+      setError('The reservation was created, but the equipment could not be added to it. Please open it and try again.');
       setSubmitting(false);
       return;
     }

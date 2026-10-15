@@ -111,10 +111,9 @@ export default function ReservationsList({ filter, refreshKey }: ReservationsLis
 
   async function cancelReservation(id: string) {
     setCanceling(true);
-    const { error } = await supabase
-      .from('reservations')
-      .update({ status: 'cancelled' })
-      .eq('id', id);
+    const { error } = await supabase.rpc('cancel_reservation', {
+      reservation_id: id,
+    });
 
     if (error) {
       console.error('Error cancelling reservation:', error);

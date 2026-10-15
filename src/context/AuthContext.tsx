@@ -82,7 +82,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (error) {
-      return { error: error.message };
+      console.error('Sign up failed:', error);
+      // Deliberately generic: a message that distinguishes "already
+      // registered" from other failures lets anyone test whether an email
+      // address has an account here.
+      return {
+        error:
+          'We could not create your account. Please check your details and try again.',
+      };
     }
 
     if (data.user) {
@@ -105,7 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (error) {
-      return { error: error.message };
+      console.error('Sign in failed:', error);
+      return { error: 'That email or password is not correct.' };
     }
 
     return { error: null };
