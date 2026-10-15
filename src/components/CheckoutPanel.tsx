@@ -591,15 +591,17 @@ export default function CheckoutCalendar({ refreshKey }: CheckoutCalendarProps) 
                             ? 'bg-emerald-50 border-emerald-100'
                             : isCheckedOut
                             ? 'bg-orange-50 border-orange-200'
+                            : item.equipment.status === 'maintenance'
+                            ? 'bg-amber-50 border-amber-200'
                             : 'bg-sky-50 border-sky-200'
                         }`}
                       >
                         <div className="flex items-center gap-3">
                           <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-                            isCheckedIn ? 'bg-emerald-100' : isCheckedOut ? 'bg-orange-100' : 'bg-sky-100'
+                            isCheckedIn ? 'bg-emerald-100' : isCheckedOut ? 'bg-orange-100' : item.equipment.status === 'maintenance' ? 'bg-amber-100' : 'bg-sky-100'
                           }`}>
                             <Package className={`w-4 h-4 ${
-                              isCheckedIn ? 'text-emerald-600' : isCheckedOut ? 'text-orange-600' : 'text-sky-600'
+                              isCheckedIn ? 'text-emerald-600' : isCheckedOut ? 'text-orange-600' : item.equipment.status === 'maintenance' ? 'text-amber-600' : 'text-sky-600'
                             }`} />
                           </div>
                           <div>
