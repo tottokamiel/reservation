@@ -670,7 +670,7 @@ export default function EquipmentCatalog({
                         </div>
 
                         {/* Inline edit form under the item */}
-                        {isCoordinator && editingItem?.id === item.id && (
+                        {isCoordinator && !infoEquipment && editingItem?.id === item.id && (
                           <div className="w-full mt-2 mb-2">
                             <EquipmentForm
                               key={item.id}
@@ -725,67 +725,80 @@ export default function EquipmentCatalog({
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
-                  <p className="text-xs text-slate-400 mb-1">Category</p>
-                  <p className="text-sm font-medium text-slate-800 capitalize">{infoEquipment.category}</p>
-                </div>
-                <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
-                  <p className="text-xs text-slate-400 mb-1">Status</p>
-                  <p className={`text-sm font-medium ${
-                    infoEquipment.status === 'available'
-                      ? 'text-emerald-600'
-                      : infoEquipment.status === 'maintenance'
-                      ? 'text-red-600'
-                      : 'text-violet-600'
-                  }`}>
-                    {infoEquipment.status === 'in_use' ? 'In Use' : infoEquipment.status.charAt(0).toUpperCase() + infoEquipment.status.slice(1)}
-                  </p>
-                </div>
-              </div>
-              <div className="rounded-xl border border-slate-200 p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <MapPin className="w-4 h-4 text-slate-400 mt-0.5" />
-                  <div>
-                    <p className="text-xs text-slate-400">Storage location</p>
-                    <p className="text-sm text-slate-700">{infoEquipment.location || 'No location recorded'}</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Info className="w-4 h-4 text-slate-400 mt-0.5" />
-                  <div>
-                    <p className="text-xs text-slate-400">Notes</p>
-                    <p className="text-sm text-slate-700">{infoEquipment.notes || 'No notes recorded'}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!(conflictMap[infoEquipment.id] || infoEquipment.status === 'maintenance') || isCoordinator) onToggleSelect(infoEquipment.id);
+            {editingItem?.id === infoEquipment.id ? (
+              <div className="p-6">
+                <EquipmentForm
+                  key={`popup-${infoEquipment.id}`}
+                  equipment={infoEquipment}
+                  categories={categoryOptions}
+                  onClose={() => setEditingItem(null)}
+                  onSaved={async () => {
+                    setEditingItem(null);
                     setInfoEquipment(null);
+                    await loadEquipment();
                   }}
-                  disabled={(conflictMap[infoEquipment.id] || infoEquipment.status === 'maintenance') && !isCoordinator}
-                  className="flex-1 min-w-[160px] px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {selectedIds.has(infoEquipment.id) ? 'Remove from reservation' : 'Select for reservation'}
-                </button>
-                {isCoordinator && (
+                />
+              </div>
+            ) : (
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
+                    <p className="text-xs text-slate-400 mb-1">Category</p>
+                    <p className="text-sm font-medium text-slate-800 capitalize">{infoEquipment.category}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
+                    <p className="text-xs text-slate-400 mb-1">Status</p>
+                    <p className={`text-sm font-medium ${
+                      infoEquipment.status === 'available'
+                        ? 'text-emerald-600'
+                        : infoEquipment.status === 'maintenance'
+                        ? 'text-red-600'
+                        : 'text-violet-600'
+                    }`}>
+                      {infoEquipment.status === 'in_use' ? 'In Use' : infoEquipment.status.charAt(0).toUpperCase() + infoEquipment.status.slice(1)}
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <MapPin className="w-4 h-4 text-slate-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-slate-400">Storage location</p>
+                      <p className="text-sm text-slate-700">{infoEquipment.location || 'No location recorded'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Info className="w-4 h-4 text-slate-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-slate-400">Notes</p>
+                      <p className="text-sm text-slate-700">{infoEquipment.notes || 'No notes recorded'}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-1">
                   <button
                     type="button"
                     onClick={() => {
-                      setEditingItem(infoEquipment);
+                      if (!(conflictMap[infoEquipment.id] || infoEquipment.status === 'maintenance') || isCoordinator) onToggleSelect(infoEquipment.id);
                       setInfoEquipment(null);
                     }}
-                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium transition-colors"
+                    disabled={(conflictMap[infoEquipment.id] || infoEquipment.status === 'maintenance') && !isCoordinator}
+                    className="flex-1 min-w-[160px] px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Pencil className="w-4 h-4" /> Edit item
+                    {selectedIds.has(infoEquipment.id) ? 'Remove from reservation' : 'Select for reservation'}
                   </button>
-                )}
+                  {isCoordinator && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingItem(infoEquipment)}
+                      className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium transition-colors"
+                    >
+                      <Pencil className="w-4 h-4" /> Edit item
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
